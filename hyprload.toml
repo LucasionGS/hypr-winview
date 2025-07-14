@@ -1,0 +1,10 @@
+[hyprexpo]
+description = "A plugin to add expo (overlay) for workspaces"
+version = "1.0"
+authors = ["Vaxry"]
+
+[hyprexpo.build]
+output = "hyprexpo/hyprexpo.so"
+steps = [
+    "make -C hyprexpo all",
+]
