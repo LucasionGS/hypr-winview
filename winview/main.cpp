@@ -66,10 +66,10 @@ static void  swipeBegin(void* self, SCallbackInfo& info, std::any param) {
 }
 
 static void swipeUpdate(void* self, SCallbackInfo& info, std::any param) {
-    static auto* const* PENABLE   = (Hyprlang::INT* const*)HyprlandAPI::getConfigValue(PHANDLE, "plugin:hyprexpo:enable_gesture")->getDataStaticPtr();
-    static auto* const* FINGERS   = (Hyprlang::INT* const*)HyprlandAPI::getConfigValue(PHANDLE, "plugin:hyprexpo:gesture_fingers")->getDataStaticPtr();
-    static auto* const* PPOSITIVE = (Hyprlang::INT* const*)HyprlandAPI::getConfigValue(PHANDLE, "plugin:hyprexpo:gesture_positive")->getDataStaticPtr();
-    static auto* const* PDISTANCE = (Hyprlang::INT* const*)HyprlandAPI::getConfigValue(PHANDLE, "plugin:hyprexpo:gesture_distance")->getDataStaticPtr();
+    static auto* const* PENABLE   = (Hyprlang::INT* const*)HyprlandAPI::getConfigValue(PHANDLE, "plugin:winview:enable_gesture")->getDataStaticPtr();
+    static auto* const* FINGERS   = (Hyprlang::INT* const*)HyprlandAPI::getConfigValue(PHANDLE, "plugin:winview:gesture_fingers")->getDataStaticPtr();
+    static auto* const* PPOSITIVE = (Hyprlang::INT* const*)HyprlandAPI::getConfigValue(PHANDLE, "plugin:winview:gesture_positive")->getDataStaticPtr();
+    static auto* const* PDISTANCE = (Hyprlang::INT* const*)HyprlandAPI::getConfigValue(PHANDLE, "plugin:winview:gesture_distance")->getDataStaticPtr();
     auto                e         = std::any_cast<IPointer::SSwipeUpdateEvent>(param);
 
     if (!swipeDirection) {
@@ -91,7 +91,7 @@ static void swipeUpdate(void* self, SCallbackInfo& info, std::any param) {
     if (!swipeActive) {
         if (g_pOverview && (**PPOSITIVE ? 1.0 : -1.0) * e.delta.y <= 0) {
             renderingOverview = true;
-            g_pOverview       = std::make_unique<COverview>(g_pCompositor->m_pLastWindow.lock(), true);
+            g_pOverview       = std::make_unique<COverview>(g_pCompositor->m_lastWindow.lock(), true);
             renderingOverview = false;
             gestured          = **PDISTANCE;
             swipeActive       = true;
@@ -99,7 +99,7 @@ static void swipeUpdate(void* self, SCallbackInfo& info, std::any param) {
 
         else if (!g_pOverview && (**PPOSITIVE ? 1.0 : -1.0) * e.delta.y > 0) {
             renderingOverview = true;
-            g_pOverview       = std::make_unique<COverview>(g_pCompositor->m_pLastWindow.lock(), true);
+            g_pOverview       = std::make_unique<COverview>(g_pCompositor->m_lastWindow.lock(), true);
             renderingOverview = false;
             gestured          = 0;
             swipeActive       = true;
@@ -126,7 +126,7 @@ static void swipeEnd(void* self, SCallbackInfo& info, std::any param) {
     g_pOverview->onSwipeEnd();
 }
 
-static void onExpoDispatcher(std::string arg) {
+static void onOverviewDispatcher(std::string arg) {
 
     if (swipeActive)
         return;
@@ -142,7 +142,7 @@ static void onExpoDispatcher(std::string arg) {
             g_pOverview->close();
         else {
             renderingOverview = true;
-            g_pOverview       = std::make_unique<COverview>(g_pCompositor->m_pLastWindow.lock());
+            g_pOverview       = std::make_unique<COverview>(g_pCompositor->m_lastWindow.lock());
             renderingOverview = false;
         }
         return;
@@ -158,12 +158,12 @@ static void onExpoDispatcher(std::string arg) {
         return;
 
     renderingOverview = true;
-    g_pOverview       = std::make_unique<COverview>(g_pCompositor->m_pLastWindow.lock());
+    g_pOverview       = std::make_unique<COverview>(g_pCompositor->m_lastWindow.lock());
     renderingOverview = false;
 }
 
 static void failNotif(const std::string& reason) {
-    HyprlandAPI::addNotification(PHANDLE, "[hyprexpo] Failure in initialization: " + reason, CHyprColor{1.0, 0.2, 0.2, 1.0}, 5000);
+    HyprlandAPI::addNotification(PHANDLE, "[winview] Failure in initialization: " + reason, CHyprColor{1.0, 0.2, 0.2, 1.0}, 5000);
 }
 
 APICALL EXPORT PLUGIN_DESCRIPTION_INFO PLUGIN_INIT(HANDLE handle) {
@@ -219,22 +219,23 @@ APICALL EXPORT PLUGIN_DESCRIPTION_INFO PLUGIN_INIT(HANDLE handle) {
     static auto P3 = HyprlandAPI::registerCallbackDynamic(PHANDLE, "swipeEnd", [](void* self, SCallbackInfo& info, std::any data) { swipeEnd(self, info, data); });
     static auto P4 = HyprlandAPI::registerCallbackDynamic(PHANDLE, "swipeUpdate", [](void* self, SCallbackInfo& info, std::any data) { swipeUpdate(self, info, data); });
 
-    HyprlandAPI::addDispatcher(PHANDLE, "hyprexpo:expo", onExpoDispatcher);
+    HyprlandAPI::addDispatcher(PHANDLE, "winview:overview", onOverviewDispatcher);
 
-    HyprlandAPI::addConfigValue(PHANDLE, "plugin:hyprexpo:columns", Hyprlang::INT{3});
-    HyprlandAPI::addConfigValue(PHANDLE, "plugin:hyprexpo:gap_size", Hyprlang::INT{5});
-    HyprlandAPI::addConfigValue(PHANDLE, "plugin:hyprexpo:bg_col", Hyprlang::INT{0xFF111111});
-    HyprlandAPI::addConfigValue(PHANDLE, "plugin:hyprexpo:workspace_method", Hyprlang::STRING{"first"}); // not used for windows but kept for compatibility
-    HyprlandAPI::addConfigValue(PHANDLE, "plugin:hyprexpo:include_special", Hyprlang::INT{0});
+    HyprlandAPI::addConfigValue(PHANDLE, "plugin:winview:columns", Hyprlang::INT{3});
+    HyprlandAPI::addConfigValue(PHANDLE, "plugin:winview:gap_size", Hyprlang::INT{5});
+    HyprlandAPI::addConfigValue(PHANDLE, "plugin:winview:bg_col", Hyprlang::INT{0xFF111111});
+    HyprlandAPI::addConfigValue(PHANDLE, "plugin:winview:workspace_method", Hyprlang::STRING{"first"}); // not used for windows but kept for compatibility
+    HyprlandAPI::addConfigValue(PHANDLE, "plugin:winview:include_special", Hyprlang::INT{0});
+    HyprlandAPI::addConfigValue(PHANDLE, "plugin:winview:skip_empty", Hyprlang::INT{0});
 
-    HyprlandAPI::addConfigValue(PHANDLE, "plugin:hyprexpo:enable_gesture", Hyprlang::INT{1});
-    HyprlandAPI::addConfigValue(PHANDLE, "plugin:hyprexpo:gesture_distance", Hyprlang::INT{200});
-    HyprlandAPI::addConfigValue(PHANDLE, "plugin:hyprexpo:gesture_positive", Hyprlang::INT{1});
-    HyprlandAPI::addConfigValue(PHANDLE, "plugin:hyprexpo:gesture_fingers", Hyprlang::INT{4});
+    HyprlandAPI::addConfigValue(PHANDLE, "plugin:winview:enable_gesture", Hyprlang::INT{1});
+    HyprlandAPI::addConfigValue(PHANDLE, "plugin:winview:gesture_distance", Hyprlang::INT{200});
+    HyprlandAPI::addConfigValue(PHANDLE, "plugin:winview:gesture_positive", Hyprlang::INT{1});
+    HyprlandAPI::addConfigValue(PHANDLE, "plugin:winview:gesture_fingers", Hyprlang::INT{4});
 
     HyprlandAPI::reloadConfig();
 
-    return {"hyprexpo", "A plugin for an overview", "Vaxry", "1.0"};
+    return {"winview", "A plugin for window overview", "Vaxry", "1.0"};
 }
 
 APICALL EXPORT void PLUGIN_EXIT() {

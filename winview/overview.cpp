@@ -27,15 +27,15 @@ COverview::~COverview() {
 }
 
 COverview::COverview(PHLWINDOW startedWindow, bool swipe_) : focusedWindow(startedWindow), swipe(swipe_), pWindow(startedWindow) {
-    const auto PMONITOR = g_pCompositor->m_lastMonitor.lock();
+    const auto PMONITOR = g_pCompositor->m_lastMonitor;
     pMonitor            = PMONITOR;
 
-    static auto* const* PCOLUMNS        = (Hyprlang::INT* const*)HyprlandAPI::getConfigValue(PHANDLE, "plugin:hyprexpo:columns")->getDataStaticPtr();
-    static auto* const* PGAPS           = (Hyprlang::INT* const*)HyprlandAPI::getConfigValue(PHANDLE, "plugin:hyprexpo:gap_size")->getDataStaticPtr();
-    static auto* const* PCOL            = (Hyprlang::INT* const*)HyprlandAPI::getConfigValue(PHANDLE, "plugin:hyprexpo:bg_col")->getDataStaticPtr();
-    static auto* const* PSKIP           = (Hyprlang::INT* const*)HyprlandAPI::getConfigValue(PHANDLE, "plugin:hyprexpo:skip_empty")->getDataStaticPtr();
-    static auto* const* PINCLUDESPECIAL = (Hyprlang::INT* const*)HyprlandAPI::getConfigValue(PHANDLE, "plugin:hyprexpo:include_special")->getDataStaticPtr();
-    static auto const*  PMETHOD         = (Hyprlang::STRING const*)HyprlandAPI::getConfigValue(PHANDLE, "plugin:hyprexpo:workspace_method")->getDataStaticPtr();
+    static auto* const* PCOLUMNS        = (Hyprlang::INT* const*)HyprlandAPI::getConfigValue(PHANDLE, "plugin:winview:columns")->getDataStaticPtr();
+    static auto* const* PGAPS           = (Hyprlang::INT* const*)HyprlandAPI::getConfigValue(PHANDLE, "plugin:winview:gap_size")->getDataStaticPtr();
+    static auto* const* PCOL            = (Hyprlang::INT* const*)HyprlandAPI::getConfigValue(PHANDLE, "plugin:winview:bg_col")->getDataStaticPtr();
+    static auto* const* PSKIP           = (Hyprlang::INT* const*)HyprlandAPI::getConfigValue(PHANDLE, "plugin:winview:skip_empty")->getDataStaticPtr();
+    static auto* const* PINCLUDESPECIAL = (Hyprlang::INT* const*)HyprlandAPI::getConfigValue(PHANDLE, "plugin:winview:include_special")->getDataStaticPtr();
+    static auto const*  PMETHOD         = (Hyprlang::STRING const*)HyprlandAPI::getConfigValue(PHANDLE, "plugin:winview:workspace_method")->getDataStaticPtr();
 
     SIDE_LENGTH = **PCOLUMNS;
     GAP_WIDTH   = **PGAPS;
@@ -88,34 +88,30 @@ COverview::COverview(PHLWINDOW startedWindow, bool swipe_) : focusedWindow(start
     g_pHyprRenderer->makeEGLCurrent();
 
     // Calculate tile size based on dynamic grid
-    Vector2D tileSize = pMonitor->m_size / std::max(gridCols, gridRows);
-    Vector2D tileRenderSize = (pMonitor->m_size - Vector2D{GAP_WIDTH * pMonitor->m_scale, GAP_WIDTH * pMonitor->m_scale} * (std::max(gridCols, gridRows) - 1)) / std::max(gridCols, gridRows);
+    Vector2D tileSize = pMonitor.lock()->m_size / std::max(gridCols, gridRows);
+    Vector2D tileRenderSize = (pMonitor.lock()->m_size - Vector2D{GAP_WIDTH * pMonitor.lock()->m_scale, GAP_WIDTH * pMonitor.lock()->m_scale} * (std::max(gridCols, gridRows) - 1)) / std::max(gridCols, gridRows);
     CBox     monbox{0, 0, tileSize.x * 2, tileSize.y * 2};
 
     if (!ENABLE_LOWRES)
-        monbox = {{0, 0}, pMonitor->m_pixelSize};
+        monbox = {{0, 0}, pMonitor.lock()->m_pixelSize};
 
     g_pHyprRenderer->m_bBlockSurfaceFeedback = true;
 
     // Render each window to its framebuffer
-    for (size_t i = 0; i < images.size(); ++i) {
-        auto& image = images[i];
-        
+    for (auto& image : images) {
         if (!image.pWindow)
             continue;
 
-        // Create or get framebuffer for each window
-    for (auto& image : images) {
-        image.fb.alloc(monbox.w, monbox.h, pMonitor->m_drmFormat);
+        image.fb.alloc(monbox.w, monbox.h, pMonitor.lock()->m_drmFormat);
 
         CRegion fakeDamage{0, 0, INT16_MAX, INT16_MAX};
-        g_pHyprRenderer->beginRender(pMonitor, fakeDamage, RENDER_MODE_FULL_FAKE, nullptr, &image.fb);
+        g_pHyprRenderer->beginRender(pMonitor.lock(), fakeDamage, RENDER_MODE_FULL_FAKE, nullptr, &image.fb);
 
         g_pHyprOpenGL->clear(CHyprColor(0, 0, 0, 0)); // Clear to transparent
 
         // Render the window
         if (image.pWindow) {
-            g_pHyprRenderer->renderWindow(image.pWindow, pMonitor, Time::steadyNow(), true, RENDER_PASS_ALL, false, true);
+            g_pHyprRenderer->renderWindow(image.pWindow, pMonitor.lock(), Time::steadyNow(), true, RENDER_PASS_ALL, false, true);
         }
 
         // Calculate tile position in the grid
@@ -139,17 +135,17 @@ COverview::COverview(PHLWINDOW startedWindow, bool swipe_) : focusedWindow(start
     }
 
     // Setup animations for the overview
-    g_pAnimationManager->createAnimation(Vector2D{pMonitor->m_size} * pMonitor->m_size / tileSize, size, g_pConfigManager->getAnimationPropertyConfig("windowsMove"), AVARDAMAGE_NONE);
-    g_pAnimationManager->createAnimation((-((pMonitor->m_size / (double)gridCols) * Vector2D{currentid % gridCols, currentid / gridCols}) * pMonitor->m_scale) *
-                                             (pMonitor->m_size / tileSize),
+    g_pAnimationManager->createAnimation(Vector2D{pMonitor.lock()->m_size} * pMonitor.lock()->m_size / tileSize, size, g_pConfigManager->getAnimationPropertyConfig("windowsMove"), AVARDAMAGE_NONE);
+    g_pAnimationManager->createAnimation((-((pMonitor.lock()->m_size / (double)gridCols) * Vector2D{currentid % gridCols, currentid / gridCols}) * pMonitor.lock()->m_scale) *
+                                             (pMonitor.lock()->m_size / tileSize),
                                          pos, g_pConfigManager->getAnimationPropertyConfig("windowsMove"), AVARDAMAGE_NONE);
 
     size->setUpdateCallback(damageMonitor);
     pos->setUpdateCallback(damageMonitor);
 
     if (!swipe) {
-        *size = pMonitor->m_size;
-        *pos  = {0, 0};
+        size->setValueAndWarp(pMonitor.lock()->m_size);
+        pos->setValueAndWarp(Vector2D{0, 0});
 
         size->setCallbackOnEnd([this](auto) { redrawAll(true); });
     }
@@ -158,14 +154,14 @@ COverview::COverview(PHLWINDOW startedWindow, bool swipe_) : focusedWindow(start
 
     g_pInputManager->setCursorImageUntilUnset("left_ptr");
 
-    lastMousePosLocal = g_pInputManager->getMouseCoordsInternal() - pMonitor->m_position;
+    lastMousePosLocal = g_pInputManager->getMouseCoordsInternal() - pMonitor.lock()->m_position;
 
     auto onCursorMove = [this](void* self, SCallbackInfo& info, std::any param) {
         if (closing)
             return;
 
         info.cancelled    = true;
-        lastMousePosLocal = g_pInputManager->getMouseCoordsInternal() - pMonitor->m_position;
+        lastMousePosLocal = g_pInputManager->getMouseCoordsInternal() - pMonitor.lock()->m_position;
     };
 
     auto onCursorSelect = [this](void* self, SCallbackInfo& info, std::any param) {
@@ -178,8 +174,8 @@ COverview::COverview(PHLWINDOW startedWindow, bool swipe_) : focusedWindow(start
         int gridCols = **PCOLUMNS;
         int gridRows = (images.size() + gridCols - 1) / gridCols;
         
-        int x = lastMousePosLocal.x / pMonitor->m_size.x * gridCols;
-        int y = lastMousePosLocal.y / pMonitor->m_size.y * gridRows;
+        int x = lastMousePosLocal.x / pMonitor.lock()->m_size.x * gridCols;
+        int y = lastMousePosLocal.y / pMonitor.lock()->m_size.y * gridRows;
 
         closeOnID = x + y * gridCols;
         
@@ -201,12 +197,14 @@ void COverview::selectHoveredWindow() {
     if (closing)
         return;
 
+    static auto* const* PCOLUMNS = (Hyprlang::INT* const*)HyprlandAPI::getConfigValue(PHANDLE, "plugin:winview:columns")->getDataStaticPtr();
+
     // get tile x,y based on the dynamic grid layout
     int gridCols = **PCOLUMNS;
     int gridRows = (images.size() + gridCols - 1) / gridCols;
     
-    int x = lastMousePosLocal.x / pMonitor->m_size.x * gridCols;
-    int y = lastMousePosLocal.y / pMonitor->m_size.y * gridRows;
+    int x = lastMousePosLocal.x / pMonitor.lock()->m_size.x * gridCols;
+    int y = lastMousePosLocal.y / pMonitor.lock()->m_size.y * gridRows;
     
     closeOnID = x + y * gridCols;
     
@@ -216,6 +214,9 @@ void COverview::selectHoveredWindow() {
 }
 
 void COverview::redrawID(int id, bool forcelowres) {
+    static auto* const* PCOLUMNS = (Hyprlang::INT* const*)HyprlandAPI::getConfigValue(PHANDLE, "plugin:winview:columns")->getDataStaticPtr();
+    static auto* const* PGAPS = (Hyprlang::INT* const*)HyprlandAPI::getConfigValue(PHANDLE, "plugin:winview:gap_size")->getDataStaticPtr();
+    
     blockOverviewRendering = true;
 
     g_pHyprRenderer->makeEGLCurrent();
@@ -226,16 +227,17 @@ void COverview::redrawID(int id, bool forcelowres) {
         return;
 
     int gridCols = **PCOLUMNS;
+    int GAP_WIDTH = **PGAPS;
     int gridRows = (images.size() + gridCols - 1) / gridCols;
-    Vector2D tileSize = pMonitor->m_size / std::max(gridCols, gridRows);
-    Vector2D tileRenderSize = (pMonitor->m_size - Vector2D{GAP_WIDTH, GAP_WIDTH} * (std::max(gridCols, gridRows) - 1)) / std::max(gridCols, gridRows);
+    Vector2D tileSize = pMonitor.lock()->m_size / std::max(gridCols, gridRows);
+    Vector2D tileRenderSize = (pMonitor.lock()->m_size - Vector2D{GAP_WIDTH, GAP_WIDTH} * (std::max(gridCols, gridRows) - 1)) / std::max(gridCols, gridRows);
     CBox     monbox{0, 0, tileSize.x * 2, tileSize.y * 2};
 
-    if (!forcelowres && (size->value() != pMonitor->m_size || closing))
-        monbox = {{0, 0}, pMonitor->m_pixelSize};
+    if (!forcelowres && (size->value() != pMonitor.lock()->m_size || closing))
+        monbox = {{0, 0}, pMonitor.lock()->m_pixelSize};
 
     if (!ENABLE_LOWRES)
-        monbox = {{0, 0}, pMonitor->m_pixelSize};
+        monbox = {{0, 0}, pMonitor.lock()->m_pixelSize};
 
     auto& image = images[id];
 
@@ -244,16 +246,16 @@ void COverview::redrawID(int id, bool forcelowres) {
 
     if (image.fb.m_size != monbox.size()) {
         image.fb.release();
-        image.fb.alloc(monbox.w, monbox.h, pMonitor->m_output->state->state().drmFormat);
+        image.fb.alloc(monbox.w, monbox.h, pMonitor.lock()->m_drmFormat);
     }
 
     CRegion fakeDamage{0, 0, INT16_MAX, INT16_MAX};
-    g_pHyprRenderer->beginRender(pMonitor, fakeDamage, RENDER_MODE_FULL_FAKE, nullptr, &image.fb);
+    g_pHyprRenderer->beginRender(pMonitor.lock(), fakeDamage, RENDER_MODE_FULL_FAKE, nullptr, &image.fb);
 
     g_pHyprOpenGL->clear(CHyprColor{0, 0, 0, 1.0});
 
     // Render the window
-    g_pHyprRenderer->renderWindow(image.pWindow, pMonitor, Time::steadyNow(), true, RENDER_PASS_ALL, false, true);
+    g_pHyprRenderer->renderWindow(image.pWindow, pMonitor.lock(), Time::steadyNow(), true, RENDER_PASS_ALL, false, true);
 
     g_pHyprOpenGL->m_renderData.blockScreenShader = true;
     g_pHyprRenderer->endRender();
@@ -269,15 +271,19 @@ void COverview::redrawAll(bool forcelowres) {
 
 void COverview::damage() {
     blockDamageReporting = true;
-    g_pHyprRenderer->damageMonitor(pMonitor);
+    g_pHyprRenderer->damageMonitor(pMonitor.lock());
     blockDamageReporting = false;
 }
 
 void COverview::onDamageReported() {
+    static auto* const* PCOLUMNS = (Hyprlang::INT* const*)HyprlandAPI::getConfigValue(PHANDLE, "plugin:winview:columns")->getDataStaticPtr();
+    static auto* const* PGAPS = (Hyprlang::INT* const*)HyprlandAPI::getConfigValue(PHANDLE, "plugin:winview:gap_size")->getDataStaticPtr();
+    
     damageDirty = true;
 
     Vector2D SIZE = size->value();
     int gridCols = **PCOLUMNS;
+    int GAP_WIDTH = **PGAPS;
     int gridRows = (images.size() + gridCols - 1) / gridCols;
 
     Vector2D tileSize = (SIZE / std::max(gridCols, gridRows));
@@ -287,18 +293,20 @@ void COverview::onDamageReported() {
         CBox texbox = CBox{(openedID % gridCols) * tileRenderSize.x + (openedID % gridCols) * GAP_WIDTH,
                           (openedID / gridCols) * tileRenderSize.y + (openedID / gridCols) * GAP_WIDTH, 
                           tileRenderSize.x, tileRenderSize.y}
-                          .translate(pMonitor->m_position);
+                          .translate(pMonitor.lock()->m_position);
 
         damage();
 
         blockDamageReporting = true;
         g_pHyprRenderer->damageBox(texbox);
         blockDamageReporting = false;
-        g_pCompositor->scheduleFrameForMonitor(pMonitor);
+        g_pCompositor->scheduleFrameForMonitor(pMonitor.lock());
     }
 }
 
 void COverview::close() {
+    static auto* const* PCOLUMNS = (Hyprlang::INT* const*)HyprlandAPI::getConfigValue(PHANDLE, "plugin:winview:columns")->getDataStaticPtr();
+    
     if (closing)
         return;
 
@@ -311,16 +319,18 @@ void COverview::close() {
         // Focus the selected window
         if (TILE.pWindow && validMapped(TILE.pWindow)) {
             g_pCompositor->focusWindow(TILE.pWindow);
-            g_pCompositor->warpCursorTo(TILE.pWindow->m_vRealPosition.value() + TILE.pWindow->m_vRealSize.value() / 2.0);
+            // TODO: Fix cursor warping when API is clarified
+            // Vector2D windowCenter = TILE.pWindow->position() + TILE.pWindow->size() / 2.0;
+            // g_pCompositor->warpCursorTo(windowCenter);
         }
     }
 
     // Calculate animation properties for the selected tile
     int gridCols = **PCOLUMNS;
-    Vector2D tileSize = (pMonitor->m_size / gridCols);
+    Vector2D tileSize = (pMonitor.lock()->m_size / gridCols);
 
-    *size = pMonitor->m_size * pMonitor->m_size / tileSize;
-    *pos  = (-((pMonitor->m_size / (double)gridCols) * Vector2D{ID % gridCols, ID / gridCols}) * pMonitor->m_scale) * (pMonitor->m_size / tileSize);
+    *size = pMonitor.lock()->m_size * pMonitor.lock()->m_size / tileSize;
+    *pos  = (-((pMonitor.lock()->m_size / (double)gridCols) * Vector2D{ID % gridCols, ID / gridCols}) * pMonitor.lock()->m_scale) * (pMonitor.lock()->m_size / tileSize);
 
     size->setCallbackOnEnd(removeOverview);
 
@@ -338,8 +348,8 @@ void COverview::onPreRender() {
 
 void COverview::onWindowChange() {
     // Update the focused window in our list if needed
-    auto focusedWindow = g_pCompositor->m_pLastWindow.lock();
-    if (focusedWindow && focusedWindow->m_pMonitor == pMonitor) {
+    auto focusedWindow = g_pCompositor->m_lastWindow.lock();
+    if (focusedWindow && focusedWindow->m_monitor == pMonitor) {
         for (size_t i = 0; i < images.size(); ++i) {
             if (images[i].pWindow == focusedWindow) {
                 openedID = i;
@@ -353,10 +363,18 @@ void COverview::onWindowChange() {
 }
 
 void COverview::render() {
-    g_pHyprRenderer->m_renderPass.add(makeUnique<COverviewPassElement>());
+    auto passElement = Hyprutils::Memory::makeShared<COverviewPassElement>();
+    g_pHyprRenderer->m_renderPass.add(passElement);
 }
 
 void COverview::fullRender() {
+    static auto* const* PCOLUMNS = (Hyprlang::INT* const*)HyprlandAPI::getConfigValue(PHANDLE, "plugin:winview:columns")->getDataStaticPtr();
+    static auto* const* PGAPS = (Hyprlang::INT* const*)HyprlandAPI::getConfigValue(PHANDLE, "plugin:winview:gap_size")->getDataStaticPtr();
+    static auto* const* PCOL = (Hyprlang::INT* const*)HyprlandAPI::getConfigValue(PHANDLE, "plugin:winview:bg_col")->getDataStaticPtr();
+    
+    int GAP_WIDTH = **PGAPS;
+    CHyprColor BG_COLOR = CHyprColor(**PCOL);
+    
     const auto GAPSIZE = (closing ? (1.0 - size->getPercent()) : size->getPercent()) * GAP_WIDTH;
 
     Vector2D SIZE = size->value();
@@ -372,7 +390,7 @@ void COverview::fullRender() {
         int y = i / gridCols;
         
         CBox texbox = {x * tileRenderSize.x + x * GAPSIZE, y * tileRenderSize.y + y * GAPSIZE, tileRenderSize.x, tileRenderSize.y};
-        texbox.scale(pMonitor->m_scale).translate(pos->value());
+        texbox.scale(pMonitor.lock()->m_scale).translate(pos->value());
         texbox.round();
         CRegion damage{0, 0, INT16_MAX, INT16_MAX};
         g_pHyprOpenGL->renderTextureInternalWithDamage(images[i].fb.getTexture(), texbox, 1.0, damage);
@@ -391,18 +409,19 @@ void COverview::onSwipeUpdate(double delta) {
     if (swipeWasCommenced)
         return;
 
-    static auto* const* PDISTANCE = (Hyprlang::INT* const*)HyprlandAPI::getConfigValue(PHANDLE, "plugin:hyprexpo:gesture_distance")->getDataStaticPtr();
+    static auto* const* PDISTANCE = (Hyprlang::INT* const*)HyprlandAPI::getConfigValue(PHANDLE, "plugin:winview:gesture_distance")->getDataStaticPtr();
+    static auto* const* PCOLUMNS = (Hyprlang::INT* const*)HyprlandAPI::getConfigValue(PHANDLE, "plugin:winview:columns")->getDataStaticPtr();
 
     const float         PERC = 1.0 - std::clamp(delta / (double)**PDISTANCE, 0.0, 1.0);
 
     int gridCols = **PCOLUMNS;
-    Vector2D tileSize = (pMonitor->m_size / gridCols);
+    Vector2D tileSize = (pMonitor.lock()->m_size / gridCols);
 
-    const auto SIZEMAX = pMonitor->m_size * pMonitor->m_size / tileSize;
+    const auto SIZEMAX = pMonitor.lock()->m_size * pMonitor.lock()->m_size / tileSize;
     const auto POSMAX =
-        (-((pMonitor->m_size / (double)gridCols) * Vector2D{openedID % gridCols, openedID / gridCols}) * pMonitor->m_scale) * (pMonitor->m_size / tileSize);
+        (-((pMonitor.lock()->m_size / (double)gridCols) * Vector2D{openedID % gridCols, openedID / gridCols}) * pMonitor.lock()->m_scale) * (pMonitor.lock()->m_size / tileSize);
 
-    const auto SIZEMIN = pMonitor->m_size;
+    const auto SIZEMIN = pMonitor.lock()->m_size;
     const auto POSMIN  = Vector2D{0, 0};
 
     size->setValueAndWarp(lerp(SIZEMIN, SIZEMAX, PERC));
@@ -410,16 +429,18 @@ void COverview::onSwipeUpdate(double delta) {
 }
 
 void COverview::onSwipeEnd() {
-    const auto SIZEMIN = pMonitor->m_size;
+    static auto* const* PCOLUMNS = (Hyprlang::INT* const*)HyprlandAPI::getConfigValue(PHANDLE, "plugin:winview:columns")->getDataStaticPtr();
+    
+    const auto SIZEMIN = pMonitor.lock()->m_size;
     int gridCols = **PCOLUMNS;
-    const auto SIZEMAX = pMonitor->m_size * pMonitor->m_size / (pMonitor->m_size / gridCols);
+    const auto SIZEMAX = pMonitor.lock()->m_size * pMonitor.lock()->m_size / (pMonitor.lock()->m_size / gridCols);
     const auto PERC    = (size->value() - SIZEMIN).x / (SIZEMAX - SIZEMIN).x;
     if (PERC > 0.5) {
         close();
         return;
     }
-    *size = pMonitor->m_size;
-    *pos  = {0, 0};
+    size->setValueAndWarp(pMonitor.lock()->m_size);
+    pos->setValueAndWarp(Vector2D{0, 0});
 
     size->setCallbackOnEnd([this](WP<Hyprutils::Animation::CBaseAnimatedVariable> thisptr) { redrawAll(true); });
 

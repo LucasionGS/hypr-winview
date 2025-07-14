@@ -29,7 +29,7 @@
     packages = eachSystem (system: {
       inherit
         (pkgsFor.${system}.hyprlandPlugins)
-        hyprexpo
+        winview
         ;
     });
 
@@ -43,7 +43,7 @@
           (prev.hyprlandPlugins
             or {})
           // {
-            hyprexpo = callPackage ./hyprexpo {};
+            winview = callPackage ./winview {};
           };
       };
     };

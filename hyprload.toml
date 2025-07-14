@@ -1,10 +1,10 @@
-[hyprexpo]
-description = "A plugin to add expo (overlay) for workspaces"
+[winview]
+description = "A plugin to add window overview for Windows"
 version = "1.0"
 authors = ["Vaxry"]
 
-[hyprexpo.build]
-output = "hyprexpo/hyprexpo.so"
+[winview.build]
+output = "winview/winview.so"
 steps = [
-    "make -C hyprexpo all",
+    "make -C winview all",
 ]

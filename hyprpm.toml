@@ -34,11 +34,11 @@ commit_pins = [
     ["9958d297641b5c84dcff93f9039d80a5ad37ab00", "c491d2831448645f24a1597a17f564aa52691ac6"]  # 0.49.0
 ]
 
-[hyprexpo]
-description = "A plugin to add expo (overlay) for workspaces"
+[winview]
+description = "A plugin to add window overview for Windows"
 authors = ["Vaxry"]
-output = "hyprexpo/hyprexpo.so"
+output = "winview/winview.so"
 build = [
-    "make -C hyprexpo all",
+    "make -C winview all",
 ]
 since_hyprland = 4364

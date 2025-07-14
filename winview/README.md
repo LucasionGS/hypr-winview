@@ -1,14 +1,14 @@
-# HyprExpo
-HyprExpo is an overview plugin like Gnome, KDE or wf.
+# Winview
+Winview is a window overview plugin for Windows environments.
   
-![HyprExpo](https://github.com/user-attachments/assets/e89df9d2-9800-4268-9929-239ad9bc3a54)
+![Winview](https://github.com/user-attachments/assets/e89df9d2-9800-4268-9929-239ad9bc3a54)
   
 ## Config
-A great start to configure this plugin would be adding this code to the `plugin` section of your hyprland configuration file:  
+A great start to configure this plugin would be adding this code to the `plugin` section of your configuration file:  
 ```ini
-# .config/hypr/hyprland.conf
+# Configuration file
 plugin {
-    hyprexpo {
+    winview {
         columns = 3
         gap_size = 5
         bg_col = rgb(111111)
@@ -38,14 +38,14 @@ gesture_positive | boolean | whether to swipe down (true), or up (false) | `true
 
 ### Binding
 ```bash
-# hyprland.conf
-bind = MODIFIER, KEY, hyprexpo:expo, OPTION
+# Configuration file
+bind = MODIFIER, KEY, winview:overview, OPTION
 ```
 
 Example:  
 ```bash
-# This will toggle HyprExpo when SUPER+g is pressed
-bind = SUPER, g, hyprexpo:expo, toggle
+# This will toggle Winview when SUPER+g is pressed
+bind = SUPER, g, winview:overview, toggle
 ```
 
 Here are a list of options you can use:  

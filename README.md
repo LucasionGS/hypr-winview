@@ -1,9 +1,9 @@
-# hyprexpo
+# winview
 
-This repository contains the hyprexpo plugin for Hyprland - an expo-like workspace overview.
+This repository contains the winview plugin for Windows - a window overview utility.
 
 # Plugin list
- - hyprexpo -> adds an expo-like workspace overview
+ - winview -> adds a window overview utility
 
 # Install
 > [!IMPORTANT]
@@ -62,7 +62,7 @@ this:
     enable = true;
     # ...
     plugins = [
-      inputs.hyprland-plugins.packages.${pkgs.system}.hyprexpo
+      inputs.hyprland-plugins.packages.${pkgs.system}.winview
       # ...
     ];
   };
@@ -78,7 +78,7 @@ with lib; let
   hypr-plugin-dir = pkgs.symlinkJoin {
     name = "hyrpland-plugins";
     paths = with hyprPluginPkgs; [
-      hyprexpo
+      winview
       #...plugins
     ];
   };
@@ -92,7 +92,7 @@ And in `hyprland.conf`
 
 ```hyprlang
 # load all the plugins you installed
-exec-once = hyprctl plugin load "$HYPR_PLUGIN_DIR/lib/libhyprexpo.so"
+exec-once = hyprctl plugin load "$HYPR_PLUGIN_DIR/lib/libwinview.so"
 ```
 
 # Contributing
